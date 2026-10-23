@@ -26,3 +26,4 @@ clones/
 .vscode/
 .idea/
 Thumbs.db
+.mypy_cache/
