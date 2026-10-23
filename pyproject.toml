@@ -1,0 +1,18 @@
+[project]
+name = "ninca"
+version = "0.0.1"
+description = "Security scanner for MCP (Model Context Protocol) servers"
+license = "Apache-2.0"
+readme = "README.md"
+authors = [
+    { name = "Fabricio Anchundia", email = "227284579+Fabricioanchundia@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+ninca = "ninca.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
