@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Secrets - never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Project data
+data/
+*.duckdb
+tmp/
+clones/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
