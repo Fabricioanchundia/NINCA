@@ -1,0 +1,15 @@
+name: "Ninca MCP Security Scan"
+description: "Scan MCP tool definitions for tool poisoning and other risks."
+branding:
+  icon: "shield"
+  color: "blue"
+inputs:
+  path:
+    description: "Path to a JSON file of MCP tool definitions."
+    required: true
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  args:
+    - "scan"
+    - ${{ inputs.path }}
