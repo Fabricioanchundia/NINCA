@@ -1,4 +1,4 @@
-"""Store discovered MCP servers in a local DuckDB database."""
+"""Store discovered MCP servers and their metadata in a local DuckDB database."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pathlib import Path
 import duckdb
 
 from ninca.discovery import McpServer
+from ninca.github import RepoMetadata
 
 DEFAULT_DB_PATH = Path("data/ninca.duckdb")
 
@@ -18,7 +19,12 @@ CREATE TABLE IF NOT EXISTS servers (
     repository_url TEXT,
     source         TEXT,
     version        TEXT,
-    discovered_at  TIMESTAMP DEFAULT current_timestamp
+    discovered_at  TIMESTAMP DEFAULT current_timestamp,
+    stars          INTEGER,
+    language       TEXT,
+    pushed_at      TEXT,
+    archived       BOOLEAN,
+    license        TEXT
 )
 """
 
@@ -30,6 +36,12 @@ ON CONFLICT (name) DO UPDATE SET
     repository_url = excluded.repository_url,
     source = excluded.source,
     version = excluded.version
+"""
+
+_UPDATE_METADATA = """
+UPDATE servers
+SET stars = ?, language = ?, pushed_at = ?, archived = ?, license = ?
+WHERE name = ?
 """
 
 
@@ -57,6 +69,37 @@ def save_servers(connection: duckdb.DuckDBPyConnection, servers: Iterable[McpSer
         )
         written += 1
     return written
+
+
+def update_metadata(
+    connection: duckdb.DuckDBPyConnection, name: str, metadata: RepoMetadata
+) -> None:
+    """Attach GitHub metadata to an already-stored server."""
+    connection.execute(
+        _UPDATE_METADATA,
+        [
+            metadata.stars,
+            metadata.language,
+            metadata.pushed_at,
+            metadata.archived,
+            metadata.license,
+            name,
+        ],
+    )
+
+
+def servers_without_metadata(
+    connection: duckdb.DuckDBPyConnection, limit: int | None = None
+) -> list[tuple[str, str]]:
+    """Return (name, repository_url) for GitHub servers that lack metadata yet."""
+    query = (
+        "SELECT name, repository_url FROM servers "
+        "WHERE stars IS NULL AND repository_url LIKE '%github.com/%'"
+    )
+    if limit is not None:
+        query += f" LIMIT {int(limit)}"
+    rows = connection.execute(query).fetchall()
+    return [(str(row[0]), str(row[1])) for row in rows]
 
 
 def count_servers(connection: duckdb.DuckDBPyConnection) -> int:
