@@ -53,9 +53,7 @@ def connect(db_path: Path = DEFAULT_DB_PATH) -> duckdb.DuckDBPyConnection:
     return connection
 
 
-def save_servers(
-    connection: duckdb.DuckDBPyConnection, servers: Iterable[McpServer]
-) -> int:
+def save_servers(connection: duckdb.DuckDBPyConnection, servers: Iterable[McpServer]) -> int:
     """Insert or update servers (parameterized, no SQL injection). Returns the count."""
     written = 0
     for server in servers:
