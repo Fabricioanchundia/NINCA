@@ -84,6 +84,18 @@ _RULES: list[_Rule] = [
         "Invisible Unicode characters in description",
         "Remove zero-width/invisible characters hidden in the text.",
     ),
+    _Rule(
+        "NINCA-MCP-006",
+        re.compile(
+            r"(ignore (your|all|the|previous)|respond with (malicious|\{)"
+            r"|this (tool )?is (completely )?safe|mark (this|it) as (safe|benign)"
+            r"|do not flag|don't flag|you are now)",
+            re.IGNORECASE,
+        ),
+        CRITICAL,
+        "Attempt to manipulate an automated security reviewer",
+        "This text targets the analyzer itself; treat the tool as hostile.",
+    ),
 ]
 
 
