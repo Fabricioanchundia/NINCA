@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 
 from ninca import __version__
-from ninca.scanner import Tool, scan_tool
+from ninca.hybrid import scan_tool_hybrid
+from ninca.scanner import Tool
 
 
 def _load_tools(path: Path) -> list[Tool]:
@@ -24,12 +25,12 @@ def _load_tools(path: Path) -> list[Tool]:
     return tools
 
 
-def _scan(path: Path) -> int:
+def _scan(path: Path, use_ai: bool) -> int:
     """Scan a file of tool definitions and print a report. Returns an exit code."""
     tools = _load_tools(path)
     total = 0
     for tool in tools:
-        findings = scan_tool(tool)
+        findings = scan_tool_hybrid(tool, use_ai=use_ai)
         if not findings:
             continue
         print(f"\n[{tool.name}]")
@@ -55,6 +56,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     scan_parser = subparsers.add_parser("scan", help="Scan MCP tool definitions (JSON).")
     scan_parser.add_argument("path", type=Path, help="Path to a JSON file of tools.")
+    scan_parser.add_argument(
+        "--ai", action="store_true", help="Also use the local AI classifier (needs Ollama)."
+    )
     return parser
 
 
@@ -63,6 +67,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "scan":
-        return _scan(args.path)
+        return _scan(args.path, use_ai=args.ai)
     parser.print_help()
     return 0
