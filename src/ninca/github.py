@@ -12,6 +12,10 @@ GITHUB_API = "https://api.github.com/repos"
 TIMEOUT = httpx.Timeout(30.0)
 
 
+class RateLimitError(RuntimeError):
+    """Raised when the GitHub API rate limit is exhausted."""
+
+
 @dataclass(frozen=True, slots=True)
 class RepoMetadata:
     """Metadata about a GitHub repository."""
@@ -52,7 +56,7 @@ def github_client() -> httpx.Client:
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "ninca-scanner",
     }
-    return httpx.Client(timeout=TIMEOUT, headers=headers)
+    return httpx.Client(timeout=TIMEOUT, headers=headers, follow_redirects=True)
 
 
 def fetch_metadata(repository_url: str, client: httpx.Client) -> RepoMetadata | None:
@@ -64,6 +68,10 @@ def fetch_metadata(repository_url: str, client: httpx.Client) -> RepoMetadata | 
     response = client.get(f"{GITHUB_API}/{owner}/{repo}")
     if response.status_code == 404:
         return None
+    remaining = response.headers.get("x-ratelimit-remaining")
+    if response.status_code in (403, 429) and remaining == "0":
+        reset = response.headers.get("x-ratelimit-reset", "unknown")
+        raise RateLimitError(f"rate limit reached; resets at epoch {reset}")
     response.raise_for_status()
     data = response.json()
     license_info = data.get("license")
