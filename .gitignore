@@ -27,3 +27,4 @@ clones/
 .idea/
 Thumbs.db
 .mypy_cache/
+report/flagged_servers.csv
