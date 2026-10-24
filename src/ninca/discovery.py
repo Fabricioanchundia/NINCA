@@ -21,6 +21,20 @@ class McpServer:
     repository_url: str
     source: str
     version: str
+    is_latest: bool
+
+
+def _is_latest(entry: dict[str, object]) -> bool:
+    """Read the isLatest flag from an entry's metadata; default True if absent."""
+    meta = entry.get("_meta")
+    if not isinstance(meta, dict):
+        return True
+    for key, value in meta.items():
+        if isinstance(key, str) and "registry" in key and isinstance(value, dict):
+            flag = value.get("isLatest")
+            if isinstance(flag, bool):
+                return flag
+    return True
 
 
 def _parse_entry(entry: dict[str, object]) -> McpServer | None:
@@ -28,26 +42,27 @@ def _parse_entry(entry: dict[str, object]) -> McpServer | None:
     raw = entry.get("server", entry)
     if not isinstance(raw, dict):
         return None
+    name = str(raw.get("name", ""))
+    if not name:
+        return None
     repository_url = ""
     source = ""
     repository = raw.get("repository")
     if isinstance(repository, dict):
         repository_url = str(repository.get("url", ""))
         source = str(repository.get("source", ""))
-    name = str(raw.get("name", ""))
-    if not name:
-        return None
     return McpServer(
         name=name,
         description=str(raw.get("description", "")),
         repository_url=repository_url,
         source=source,
         version=str(raw.get("version", "")),
+        is_latest=_is_latest(entry),
     )
 
 
 def iter_servers(limit: int | None = None) -> Iterator[McpServer]:
-    """Yield MCP servers from the official registry, following pagination."""
+    """Yield every MCP server entry from the registry, following pagination."""
     cursor: str | None = None
     seen = 0
     headers = {"User-Agent": "ninca-scanner (https://github.com/Fabricioanchundia/NINCA)"}
@@ -74,3 +89,21 @@ def iter_servers(limit: int | None = None) -> Iterator[McpServer]:
             cursor = metadata.get("nextCursor") if isinstance(metadata, dict) else None
             if not cursor:
                 return
+
+
+def github_servers(limit: int | None = None) -> Iterator[McpServer]:
+    """Yield unique, latest-version MCP servers hosted on GitHub."""
+    seen_names: set[str] = set()
+    yielded = 0
+    for server in iter_servers():
+        if not server.is_latest:
+            continue
+        if "github.com" not in server.repository_url:
+            continue
+        if server.name in seen_names:
+            continue
+        seen_names.add(server.name)
+        yield server
+        yielded += 1
+        if limit is not None and yielded >= limit:
+            return
