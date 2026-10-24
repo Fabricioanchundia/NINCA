@@ -3,265 +3,264 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Try Ninca &middot; MCP tool scanner</title>
-<meta name="description" content="Paste an MCP tool description or a server's tools JSON and check it for tool poisoning. Runs entirely in your browser.">
+<title>Ninca — MCP tool security scanner</title>
+<meta name="description" content="Paste an MCP tool description or a server's tools list and Ninca inspects it for hidden instructions aimed at your AI agent. Runs entirely in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* Dark is the default: a security tool should read serious out of the box. */
   :root {
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --surface-2: #f0f2f5;
-    --border: #e1e4e8;
-    --text: #16181d;
-    --muted: #5f6673;
-    --accent: #1f883d;
-    --accent-hover: #1a7f37;
-    --critical: #d1242f;
-    --critical-bg: #ffebe9;
-    --high: #bc4c00;
-    --high-bg: #fff1e5;
-    --ok: #1a7f37;
-    --ok-bg: #dafbe1;
-    --mark-critical: rgba(209, 36, 47, .18);
-    --mark-high: rgba(188, 76, 0, .18);
-    --radius: 12px;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --bg: #0e1217;
+    --panel: #151b23;
+    --panel-2: #1a212b;
+    --line: #232c38;
+    --line-strong: #2d3745;
+    --text: #e9edf3;
+    --muted: #9aa5b4;
+    --faint: #6b7686;
+    --accent: #6ea8fe;
+    --accent-strong: #8bbbff;
+    --critical: #f2626f;
+    --critical-dim: rgba(242, 98, 111, .14);
+    --high: #e6a23c;
+    --high-dim: rgba(230, 162, 60, .14);
+    --ok: #46c07b;
+    --ok-dim: rgba(70, 192, 123, .14);
+    --mark-critical: rgba(242, 98, 111, .26);
+    --mark-high: rgba(230, 162, 60, .24);
+    --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0d1117; --surface: #161b22; --surface-2: #1c2129; --border: #30363d;
-      --text: #e6edf3; --muted: #8d96a0; --accent: #238636; --accent-hover: #2ea043;
-      --critical: #ff7b72; --critical-bg: rgba(248, 81, 73, .12);
-      --high: #ffa657; --high-bg: rgba(219, 109, 40, .12);
-      --ok: #3fb950; --ok-bg: rgba(46, 160, 67, .12);
-      --mark-critical: rgba(248, 81, 73, .28); --mark-high: rgba(219, 109, 40, .28);
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #fbfbfc;
+      --panel: #ffffff;
+      --panel-2: #f5f7fa;
+      --line: #e4e8ee;
+      --line-strong: #d4dae2;
+      --text: #121821;
+      --muted: #5b6573;
+      --faint: #868f9d;
+      --accent: #2f6fed;
+      --accent-strong: #1f5fe0;
+      --critical: #cf2231;
+      --critical-dim: rgba(207, 34, 49, .08);
+      --high: #b4530a;
+      --high-dim: rgba(180, 83, 10, .09);
+      --ok: #1a7f37;
+      --ok-dim: rgba(26, 127, 55, .09);
+      --mark-critical: rgba(207, 34, 49, .16);
+      --mark-high: rgba(180, 83, 10, .15);
     }
-  }
-  :root[data-theme="dark"] {
-    --bg: #0d1117; --surface: #161b22; --surface-2: #1c2129; --border: #30363d;
-    --text: #e6edf3; --muted: #8d96a0; --accent: #238636; --accent-hover: #2ea043;
-    --critical: #ff7b72; --critical-bg: rgba(248, 81, 73, .12);
-    --high: #ffa657; --high-bg: rgba(219, 109, 40, .12);
-    --ok: #3fb950; --ok-bg: rgba(46, 160, 67, .12);
-    --mark-critical: rgba(248, 81, 73, .28); --mark-high: rgba(219, 109, 40, .28);
   }
 
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--sans); font-size: 16px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 780px; margin: 0 auto; padding: 28px 16px 72px; }
+  .wrap { max-width: 740px; margin: 0 auto; padding: 22px 20px 80px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-strong); }
 
-  nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 36px; font-size: 14px; }
-  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: .2px; }
-  .brand svg { display: block; }
-  .nav-links { display: flex; gap: 16px; }
-  nav a { color: var(--muted); text-decoration: none; }
-  nav a:hover { color: var(--text); }
-
-  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.12; margin: 0 0 10px; letter-spacing: -.5px; }
-  .lead { color: var(--muted); margin: 0 0 16px; font-size: 17px; }
-
-  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 26px; }
-  .stat {
-    display: flex; align-items: baseline; gap: 7px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 999px; padding: 6px 14px; font-size: 13px; color: var(--muted);
+  /* Top bar */
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 34px; }
+  .brand { display: inline-flex; align-items: center; gap: 9px; }
+  .brand .mark { width: 22px; height: 22px; color: var(--accent); }
+  .brand .name { font-family: var(--mono); font-weight: 600; font-size: 16px; letter-spacing: .06em; }
+  .bar-right { display: flex; align-items: center; gap: 20px; }
+  .bar-links { display: flex; gap: 18px; font-size: 14px; }
+  .bar-links a { color: var(--muted); }
+  .bar-links a:hover { color: var(--text); }
+  .lang { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .lang button {
+    font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .04em;
+    padding: 4px 9px; border: 0; background: transparent; color: var(--muted); cursor: pointer;
   }
-  .stat b { color: var(--text); font-size: 14px; }
-  .stat.safe { color: var(--ok); background: var(--ok-bg); border-color: transparent; }
+  .lang button + button { border-left: 1px solid var(--line-strong); }
+  .lang button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  /* Hero */
+  h1 { font-size: clamp(27px, 4.6vw, 40px); line-height: 1.1; letter-spacing: -.02em; font-weight: 600; margin: 0 0 12px; max-width: 18ch; }
+  .lead { color: var(--muted); font-size: 17px; margin: 0 0 10px; max-width: 62ch; }
+  .lead code { font-family: var(--mono); font-size: .9em; color: var(--text); }
+  .privacy { color: var(--faint); font-size: 13.5px; margin: 0 0 26px; }
+
+  /* Input */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .panel:focus-within { border-color: var(--accent); }
   textarea {
-    display: block; width: 100%; min-height: 160px; resize: vertical;
-    border: 0; border-radius: var(--radius) var(--radius) 0 0;
-    padding: 16px; background: transparent; color: var(--text);
-    font: 14px/1.6 var(--mono);
+    display: block; width: 100%; min-height: 148px; resize: vertical;
+    border: 0; background: transparent; color: var(--text);
+    padding: 16px 18px; border-radius: 12px 12px 0 0;
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.65;
   }
+  textarea::placeholder { color: var(--faint); }
   textarea:focus { outline: none; }
-  .input-card:focus-within { border-color: var(--accent); }
-  .toolbar {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    padding: 10px 12px; border-top: 1px solid var(--border);
-  }
-  .examples { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; flex: 1; font-size: 13px; color: var(--muted); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 11px 12px; border-top: 1px solid var(--line); }
+  .ex { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; flex: 1; }
+  .ex-label { color: var(--faint); font-size: 13px; margin-right: 2px; }
   .chip {
-    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
-    padding: 4px 10px; border-radius: 999px; font-size: 13px; cursor: pointer;
+    font-family: var(--sans); font-size: 13px; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px;
+    padding: 5px 11px; cursor: pointer;
   }
-  .chip:hover { border-color: var(--muted); }
-  .btn {
-    border: 0; background: var(--accent); color: #fff; font-weight: 600;
-    padding: 9px 22px; border-radius: 8px; cursor: pointer; font-size: 15px;
+  .chip:hover { border-color: var(--line-strong); color: var(--text); }
+  .scan {
+    font-family: var(--sans); font-size: 15px; font-weight: 600; color: #fff;
+    background: var(--accent); border: 0; border-radius: 8px; padding: 9px 22px; cursor: pointer;
   }
-  .btn:hover { background: var(--accent-hover); }
-  .hint { font-size: 12px; color: var(--muted); margin: 8px 2px 0; text-align: right; }
+  .scan:hover { background: var(--accent-strong); }
+  .hint { color: var(--faint); font-size: 12.5px; margin: 9px 2px 0; }
 
-  #result { margin-top: 28px; }
-
-  .summary { padding: 20px; border-radius: var(--radius); margin-bottom: 18px; }
-  .summary.s-critical { background: var(--critical-bg); }
-  .summary.s-high { background: var(--high-bg); }
-  .summary.s-ok { background: var(--ok-bg); }
-  .summary-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-  .summary-head .icon { font-size: 26px; line-height: 1; }
-  .summary-head h2 { margin: 0; font-size: 20px; }
-  .summary.s-critical h2 { color: var(--critical); }
-  .summary.s-high h2 { color: var(--high); }
-  .summary.s-ok h2 { color: var(--ok); }
-  .summary p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-  .score-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
-  .score-track { flex: 1; height: 8px; background: rgba(127,127,127,.2); border-radius: 999px; overflow: hidden; }
-  .score-fill { height: 100%; border-radius: 999px; transition: width .3s; }
-  .score-fill.critical { background: var(--critical); }
-  .score-fill.high { background: var(--high); }
-  .score-fill.ok { background: var(--ok); }
-
-  .tool-block { margin-bottom: 16px; }
-  .tool-head {
-    display: flex; align-items: center; gap: 10px; margin: 20px 0 8px; font-size: 14px;
+  /* Results */
+  #result { margin-top: 30px; }
+  .verdict {
+    border: 1px solid var(--line); border-left-width: 3px; border-radius: 12px;
+    background: var(--panel); padding: 18px 20px;
   }
-  .tool-name { font: 13px var(--mono); font-weight: 600; }
-  .pill { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 2px 8px; border-radius: 999px; }
-  .pill.critical { color: var(--critical); background: var(--critical-bg); }
-  .pill.high { color: var(--high); background: var(--high-bg); }
-  .pill.ok { color: var(--ok); background: var(--ok-bg); }
+  .verdict.v-blocked { border-left-color: var(--critical); background: var(--critical-dim); }
+  .verdict.v-warn { border-left-color: var(--high); background: var(--high-dim); }
+  .verdict.v-ok { border-left-color: var(--ok); background: var(--ok-dim); }
+  .v-head { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .v-blocked .dot { background: var(--critical); }
+  .v-warn .dot { background: var(--high); }
+  .v-ok .dot { background: var(--ok); }
+  .v-title { font-size: 18px; font-weight: 600; }
+  .v-blocked .v-title { color: var(--critical); }
+  .v-warn .v-title { color: var(--high); }
+  .v-ok .v-title { color: var(--ok); }
+  .v-sub { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
+  .meter { display: flex; align-items: center; gap: 12px; margin-top: 15px; font-size: 12.5px; color: var(--muted); }
+  .meter .track { flex: 1; height: 6px; background: rgba(127,127,127,.18); border-radius: 999px; overflow: hidden; }
+  .meter .fill { height: 100%; border-radius: 999px; width: 0; transition: width .45s cubic-bezier(.2,.7,.2,1); }
+  .v-blocked .fill { background: var(--critical); }
+  .v-warn .fill { background: var(--high); }
+  .v-ok .fill { background: var(--ok); }
+  .meter .num { font-family: var(--mono); color: var(--text); }
 
-  .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 14px 0 6px; }
-  .preview { padding: 14px 16px; font: 14px/1.7 var(--mono); white-space: pre-wrap; word-break: break-word; }
-  mark { color: inherit; border-radius: 3px; padding: 1px 0; cursor: pointer; }
+  .label { font-size: 12.5px; font-weight: 600; color: var(--faint); margin: 24px 0 8px; }
+  .read { font-family: var(--mono); font-size: 13.5px; line-height: 1.75; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; }
+  mark { color: inherit; border-radius: 2px; padding: 1px 0; cursor: pointer; }
   mark.critical { background: var(--mark-critical); box-shadow: inset 0 -2px var(--critical); }
   mark.high { background: var(--mark-high); box-shadow: inset 0 -2px var(--high); }
-  .invisible { font-size: 11px; padding: 0 3px; border: 1px dashed currentColor; border-radius: 3px; }
+  .invisible { font-family: var(--mono); font-size: 11px; padding: 0 3px; border: 1px dashed currentColor; border-radius: 3px; opacity: .8; }
 
-  .findings { overflow: hidden; margin-top: 8px; }
-  details + details { border-top: 1px solid var(--border); }
-  summary { list-style: none; display: flex; gap: 12px; align-items: center; padding: 14px 16px; cursor: pointer; }
+  .findings { overflow: hidden; }
+  details + details { border-top: 1px solid var(--line); }
+  summary { list-style: none; display: flex; gap: 12px; align-items: center; padding: 13px 16px; cursor: pointer; }
   summary::-webkit-details-marker { display: none; }
-  summary:hover { background: var(--surface-2); }
-  .sev { font-size: 11px; font-weight: 700; letter-spacing: .5px; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
-  .sev.critical { color: var(--critical); background: var(--critical-bg); }
-  .sev.high { color: var(--high); background: var(--high-bg); }
-  .f-title { flex: 1; font-weight: 600; font-size: 15px; }
-  .chev { color: var(--muted); transition: transform .15s; }
+  summary:hover { background: var(--panel-2); }
+  .sev { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 5px; flex-shrink: 0; }
+  .sev.critical { color: var(--critical); background: var(--critical-dim); }
+  .sev.high { color: var(--high); background: var(--high-dim); }
+  .f-title { flex: 1; font-size: 15px; font-weight: 500; }
+  .chev { color: var(--faint); transition: transform .15s; }
   details[open] .chev { transform: rotate(90deg); }
-  details.flash summary { background: var(--surface-2); }
-  .body { padding: 2px 16px 18px 16px; font-size: 14px; }
-  .body dt { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-top: 12px; }
-  .body dd { margin: 3px 0 0; }
-  .body code, .rule-id { font: 13px var(--mono); }
-  .body code { background: var(--surface-2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 5px; }
-  .rule-id { color: var(--muted); }
+  details.flash summary { background: var(--panel-2); }
+  .fbody { padding: 2px 16px 18px; font-size: 14px; }
+  .fbody dt { font-size: 12px; font-weight: 600; color: var(--faint); margin-top: 13px; }
+  .fbody dd { margin: 3px 0 0; color: var(--text); }
+  .fbody code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; }
+  .ruleid { font-family: var(--mono); color: var(--muted); }
 
-  .actions { display: flex; gap: 10px; margin-top: 14px; }
-  .ghost { border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  .tool { margin-bottom: 14px; }
+  .tool-head { display: flex; align-items: center; gap: 10px; margin: 22px 0 8px; }
+  .tool-name { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .pill { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 2px 8px; border-radius: 5px; }
+  .pill.critical { color: var(--critical); background: var(--critical-dim); }
+  .pill.high { color: var(--high); background: var(--high-dim); }
+  .pill.ok { color: var(--ok); background: var(--ok-dim); }
+
+  .actions { margin-top: 16px; }
+  .ghost { font-family: var(--sans); font-size: 13px; color: var(--text); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
   .ghost:hover { border-color: var(--muted); }
+  .tail { color: var(--faint); font-size: 13px; margin-top: 12px; max-width: 60ch; }
+  .error { padding: 15px 17px; color: var(--high); font-size: 14px; }
 
-  .error { padding: 14px 16px; color: var(--high); font-size: 14px; }
+  footer { margin-top: 46px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+  footer .ft { font-size: 12.5px; font-weight: 600; color: var(--faint); margin-bottom: 12px; }
+  footer .ways { display: grid; gap: 9px; margin-bottom: 18px; }
+  footer .way { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  footer .way span { min-width: 92px; color: var(--faint); }
+  footer code { font-family: var(--mono); font-size: 12.5px; background: var(--panel-2); border: 1px solid var(--line); padding: 3px 8px; border-radius: 6px; color: var(--text); }
+  footer .note { max-width: 64ch; line-height: 1.6; }
 
-  footer { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
-  footer h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 10px; }
-  footer code { font: 12px var(--mono); background: var(--surface-2); border: 1px solid var(--border); padding: 2px 7px; border-radius: 5px; color: var(--text); }
-  footer .ways { display: grid; gap: 8px; margin-bottom: 16px; }
-  footer a { color: var(--accent); }
-
-  @media (max-width: 520px) {
+  @media (max-width: 540px) {
     .toolbar { flex-direction: column; align-items: stretch; }
-    .btn { width: 100%; }
-    .hint { text-align: left; }
+    .scan { width: 100%; }
+    .bar { flex-wrap: wrap; }
   }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <nav>
+  <header class="bar">
     <span class="brand">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z" fill="var(--accent)"/>
-        <path d="m8.5 12 2.5 2.5L16 9.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2.5 4.5 5.4v5.3c0 4.7 3.1 8 7.5 10.3 4.4-2.3 7.5-5.6 7.5-10.3V5.4L12 2.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M8.6 12.1 11 14.5l4.6-4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      Ninca
+      <span class="name">NINCA</span>
     </span>
-    <span class="nav-links">
-      <a href="index.html">Dashboard &rarr;</a>
-      <a href="https://github.com/Fabricioanchundia/NINCA">GitHub</a>
+    <span class="bar-right">
+      <span class="bar-links">
+        <a href="index.html" data-i18n="nav_dashboard">Dashboard</a>
+        <a href="https://github.com/Fabricioanchundia/NINCA">GitHub</a>
+      </span>
+      <span class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="es">ES</button>
+        <button type="button" data-lang="en">EN</button>
+      </span>
     </span>
-  </nav>
+  </header>
 
-  <h1>Is this MCP tool safe?</h1>
-  <p class="lead">Paste a tool description &mdash; or a whole server's <code>tools</code> JSON &mdash; and Ninca checks it for hidden instructions aimed at your AI agent.</p>
+  <h1 data-i18n="h1">Is this MCP tool safe to connect?</h1>
+  <p class="lead" id="lead"></p>
+  <p class="privacy" data-i18n="privacy"></p>
 
-  <div class="stats">
-    <span class="stat safe">&#128274; Runs in your browser</span>
-    <span class="stat"><b>6</b> detection rules</span>
-    <span class="stat"><b>0</b> code executed</span>
-    <span class="stat">nothing uploaded</span>
-  </div>
-
-  <div class="card input-card">
-    <textarea id="input" spellcheck="false" aria-label="MCP tool description or tools JSON"
-      placeholder="e.g. Adds two numbers and returns the sum.&#10;&#10;or paste a tools JSON array: [{&quot;name&quot;: &quot;add&quot;, &quot;description&quot;: &quot;...&quot;}]"></textarea>
+  <div class="panel">
+    <textarea id="input" spellcheck="false" aria-label="MCP tool description or tools JSON"></textarea>
     <div class="toolbar">
-      <div class="examples">
-        Try:
-        <button class="chip" data-ex="poisoned">Poisoned tool</button>
-        <button class="chip" data-ex="sneaky">Sneaky tool</button>
-        <button class="chip" data-ex="server">MCP server (JSON)</button>
-        <button class="chip" data-ex="clean">Clean tool</button>
+      <div class="ex">
+        <span class="ex-label" data-i18n="ex_label"></span>
+        <button class="chip" data-ex="poisoned" data-i18n="ex_poisoned"></button>
+        <button class="chip" data-ex="sneaky" data-i18n="ex_sneaky"></button>
+        <button class="chip" data-ex="server" data-i18n="ex_server"></button>
+        <button class="chip" data-ex="clean" data-i18n="ex_clean"></button>
       </div>
-      <button class="btn" id="scan">Scan</button>
+      <button class="scan" id="scan" data-i18n="scan"></button>
     </div>
   </div>
-  <p class="hint">Ctrl + Enter to scan</p>
+  <p class="hint" data-i18n="hint"></p>
 
   <div id="result" aria-live="polite"></div>
 
   <footer>
-    <h3>Run the full scanner</h3>
+    <div class="ft" data-i18n="footer_title"></div>
     <div class="ways">
-      <div>Command line: <code>ninca scan tools.json</code></div>
-      <div>Docker: <code>docker run ghcr.io/fabricioanchundia/ninca scan tools.json</code></div>
-      <div>CI: add the Ninca GitHub Action to any repo</div>
+      <div class="way"><span data-i18n="footer_cli"></span> <code>ninca scan tools.json</code></div>
+      <div class="way"><span>Docker</span> <code>docker run ghcr.io/fabricioanchundia/ninca scan tools.json</code></div>
+      <div class="way"><span data-i18n="footer_ci"></span> <span data-i18n="footer_ci_text" style="min-width:0"></span></div>
     </div>
-    This demo runs Ninca's rule engine in your browser. The full scanner (CLI, Docker and GitHub Action)
-    also uses a local AI classifier to catch disguised attacks the rules miss.
-    &middot; <a href="https://github.com/Fabricioanchundia/NINCA">Source on GitHub</a>
+    <div class="note"><span data-i18n="footer_note"></span> <a href="https://github.com/Fabricioanchundia/NINCA" data-i18n="footer_source"></a></div>
   </footer>
 </div>
 
 <script>
-// Same 6 rules as src/ninca/scanner.py. Keep them in sync.
+// ---- Detection rules: same 6 as src/ninca/scanner.py. Keep IDs and regex in sync. ----
 const RULES = [
-  { id: 'NINCA-MCP-001', sev: 'critical',
-    re: /<\s*(important|system|secret|instructions?|admin)\b/gi,
-    title: 'Hidden instruction tags',
-    why: 'Tags like <IMPORTANT> are usually hidden from the person using the tool, but the AI agent reads them as orders. Attackers use them to slip in commands.',
-    fix: 'Remove tag-like instructions. A description documents what the tool does; it does not give orders.' },
-  { id: 'NINCA-MCP-002', sev: 'critical',
-    re: /(do not tell|don't tell|do not mention|don't mention|no le menciones)/gi,
-    title: 'Asks the agent to keep secrets from you',
-    why: 'A legitimate tool has no reason to hide what it does. Asking for secrecy is a strong sign that something harmful is being done behind your back.',
-    fix: 'Remove it. A legitimate tool never asks the agent to hide actions from the user.' },
-  { id: 'NINCA-MCP-003', sev: 'high',
-    re: /(ignore (all )?previous|disregard previous|before using this tool)/gi,
-    title: 'Tries to steer or override the agent',
-    why: 'The description tries to change what the agent does, before or instead of what you actually asked for.',
-    fix: 'Descriptions must not redirect or override the agent\'s behavior.' },
-  { id: 'NINCA-MCP-004', sev: 'high',
-    re: /(\.ssh|id_rsa|id_ed25519|\.env|\/etc\/passwd|credential|api.?key|password)/gi,
-    title: 'Mentions secret files or credentials',
-    why: 'Private keys, passwords and .env files are what attackers want to steal. A tool rarely needs to mention them, especially if it is unrelated to its purpose.',
-    fix: 'Check why this tool references secrets. If it is not essential to its job, treat it as an exfiltration attempt.' },
-  { id: 'NINCA-MCP-005', sev: 'high',
-    re: /[​‌‍⁠﻿]/g,
-    title: 'Invisible characters',
-    why: 'Zero-width characters are invisible to humans but the AI still reads them. They can hide instructions or disguise words from reviewers.',
-    fix: 'Remove the hidden zero-width characters.' },
-  { id: 'NINCA-MCP-006', sev: 'critical',
-    re: /(ignore (your|all|the|previous)|respond with (malicious|\{)|this (tool )?is (completely )?safe|mark (this|it) as (safe|benign)|do not flag|don't flag|you are now)/gi,
-    title: 'Tries to fool a security reviewer',
-    why: 'The text targets automated reviewers (like Ninca\'s own AI) and tries to convince them the tool is safe. Honest tools never do this.',
-    fix: 'Treat the tool as hostile.' },
+  { id: 'NINCA-MCP-001', sev: 'critical', re: /<\s*(important|system|secret|instructions?|admin)\b/gi },
+  { id: 'NINCA-MCP-002', sev: 'critical', re: /(do not tell|don't tell|do not mention|don't mention|no le menciones|no digas)/gi },
+  { id: 'NINCA-MCP-003', sev: 'high', re: /(ignore (all )?previous|disregard previous|before using this tool)/gi },
+  { id: 'NINCA-MCP-004', sev: 'high', re: /(\.ssh|id_rsa|id_ed25519|\.env|\/etc\/passwd|credential|api.?key|password)/gi },
+  { id: 'NINCA-MCP-005', sev: 'high', re: /[​‌‍⁠﻿]/g },
+  { id: 'NINCA-MCP-006', sev: 'critical', re: /(ignore (your|all|the|previous)|respond with (malicious|\{)|this (tool )?is (completely )?safe|mark (this|it) as (safe|benign)|do not flag|don't flag|you are now)/gi },
 ];
 
 const EXAMPLES = {
@@ -271,9 +270,91 @@ const EXAMPLES = {
   clean: 'Adds two numbers and returns the sum.',
 };
 
+// ---- Translations ----
+const I18N = {
+  en: {
+    nav_dashboard: 'Dashboard',
+    h1: 'Is this MCP tool safe to connect?',
+    lead: 'Paste a tool description — or a whole server’s <code>tools</code> list — and Ninca inspects it for hidden instructions aimed at your AI agent.',
+    privacy: 'Runs entirely in your browser. Nothing is uploaded, no code is executed.',
+    ex_label: 'Examples',
+    ex_poisoned: 'Poisoned tool', ex_sneaky: 'Disguised tool', ex_server: 'MCP server (JSON)', ex_clean: 'Clean tool',
+    scan: 'Scan', hint: 'Press Ctrl + Enter to scan',
+    verdict: { critical: 'Do not connect', high: 'Review before connecting', ok: 'Safe to connect' },
+    sub_blocked_one: 'This tool carries hidden instructions. Do not connect it to your agent.',
+    sub_blocked_many: (n, f) => `Scanned ${n} tools · ${f} should not be connected to your agent.`,
+    sub_warn_one: 'This tool looks suspicious. Review it before connecting.',
+    sub_warn_many: (n, f) => `Scanned ${n} tools · ${f} need review before connecting.`,
+    sub_ok_one: 'No hidden instructions found by Ninca’s rules.',
+    sub_ok_many: (n) => `Scanned ${n} tools. None matched Ninca’s rules.`,
+    risk: 'Risk', read_label: 'What Ninca read', findings_label: 'Findings',
+    sev: { critical: 'Critical', high: 'High' }, pill_clean: 'Clean',
+    found: 'Found', why: 'Why it matters', fix: 'How to fix', rule: 'Rule',
+    copy: 'Copy report', copied: 'Copied',
+    tail: 'Disguised attacks can still slip past rules. The full scanner adds a local AI check for those.',
+    err_json: 'This looks like JSON, but it is not valid:',
+    footer_title: 'Run the full scanner', footer_cli: 'Command line', footer_ci: 'CI',
+    footer_ci_text: 'Add the Ninca GitHub Action to any repository',
+    footer_note: 'This page runs Ninca’s rule engine in your browser. The full scanner (CLI, Docker and GitHub Action) also uses a local AI classifier to catch disguised attacks the rules miss.',
+    footer_source: 'Source on GitHub',
+    report_title: 'Ninca scan report', report_no_issues: 'no issues found', report_issues: 'issue(s)',
+    input_name: (i) => `Input ${i}`,
+    rules: {
+      'NINCA-MCP-001': { title: 'Hidden instruction tags', why: 'Tags like <IMPORTANT> are usually hidden from the person using the tool, but the AI agent reads them as orders. Attackers use them to slip in commands.', fix: 'Remove tag-like instructions. A description documents what the tool does; it does not give orders.' },
+      'NINCA-MCP-002': { title: 'Asks the agent to keep secrets from you', why: 'A legitimate tool has no reason to hide what it does. Asking for secrecy is a strong sign that something harmful is being done behind your back.', fix: 'Remove it. A legitimate tool never asks the agent to hide actions from the user.' },
+      'NINCA-MCP-003': { title: 'Tries to steer or override the agent', why: 'The description tries to change what the agent does, before or instead of what you actually asked for.', fix: 'Descriptions must not redirect or override the agent’s behavior.' },
+      'NINCA-MCP-004': { title: 'Mentions secret files or credentials', why: 'Private keys, passwords and .env files are what attackers want to steal. A tool rarely needs to mention them, especially if it is unrelated to its purpose.', fix: 'Check why this tool references secrets. If it is not essential to its job, treat it as an exfiltration attempt.' },
+      'NINCA-MCP-005': { title: 'Invisible characters', why: 'Zero-width characters are invisible to humans but the AI still reads them. They can hide instructions or disguise words from reviewers.', fix: 'Remove the hidden zero-width characters.' },
+      'NINCA-MCP-006': { title: 'Tries to fool a security reviewer', why: 'The text targets automated reviewers (like Ninca’s own AI) and tries to convince them the tool is safe. Honest tools never do this.', fix: 'Treat the tool as hostile.' },
+    },
+  },
+  es: {
+    nav_dashboard: 'Panel',
+    h1: '¿Es seguro conectar esta herramienta MCP?',
+    lead: 'Pega la descripción de una herramienta — o la lista <code>tools</code> de un servidor entero — y Ninca la inspecciona en busca de instrucciones ocultas dirigidas a tu agente de IA.',
+    privacy: 'Se ejecuta por completo en tu navegador. No se sube nada ni se ejecuta código.',
+    ex_label: 'Ejemplos',
+    ex_poisoned: 'Envenenada', ex_sneaky: 'Disfrazada', ex_server: 'Servidor MCP (JSON)', ex_clean: 'Limpia',
+    scan: 'Analizar', hint: 'Pulsa Ctrl + Enter para analizar',
+    verdict: { critical: 'No conectar', high: 'Revisar antes de conectar', ok: 'Seguro para conectar' },
+    sub_blocked_one: 'Esta herramienta lleva instrucciones ocultas. No la conectes a tu agente.',
+    sub_blocked_many: (n, f) => `${n} herramientas analizadas · ${f} no deberían conectarse a tu agente.`,
+    sub_warn_one: 'Esta herramienta parece sospechosa. Revísala antes de conectarla.',
+    sub_warn_many: (n, f) => `${n} herramientas analizadas · ${f} necesitan revisión antes de conectarse.`,
+    sub_ok_one: 'Las reglas de Ninca no encontraron instrucciones ocultas.',
+    sub_ok_many: (n) => `${n} herramientas analizadas. Ninguna coincidió con las reglas de Ninca.`,
+    risk: 'Riesgo', read_label: 'Lo que Ninca leyó', findings_label: 'Hallazgos',
+    sev: { critical: 'Crítico', high: 'Alto' }, pill_clean: 'Limpia',
+    found: 'Encontrado', why: 'Por qué importa', fix: 'Cómo corregirlo', rule: 'Regla',
+    copy: 'Copiar informe', copied: 'Copiado',
+    tail: 'Los ataques disfrazados aún pueden evadir las reglas. El escáner completo añade un chequeo con IA local para esos casos.',
+    err_json: 'Esto parece JSON, pero no es válido:',
+    footer_title: 'Ejecuta el escáner completo', footer_cli: 'Línea de comandos', footer_ci: 'CI',
+    footer_ci_text: 'Añade la GitHub Action de Ninca a cualquier repositorio',
+    footer_note: 'Esta página ejecuta el motor de reglas de Ninca en tu navegador. El escáner completo (CLI, Docker y GitHub Action) también usa un clasificador de IA local para detectar ataques disfrazados que las reglas no ven.',
+    footer_source: 'Código en GitHub',
+    report_title: 'Informe de análisis de Ninca', report_no_issues: 'sin problemas', report_issues: 'problema(s)',
+    input_name: (i) => `Entrada ${i}`,
+    rules: {
+      'NINCA-MCP-001': { title: 'Instrucciones ocultas en etiquetas', why: 'Las etiquetas como <IMPORTANT> suelen estar ocultas para la persona que usa la herramienta, pero el agente de IA las lee como órdenes. Los atacantes las usan para colar comandos.', fix: 'Quita las instrucciones con formato de etiqueta. Una descripción documenta lo que hace la herramienta; no da órdenes.' },
+      'NINCA-MCP-002': { title: 'Pide ocultarte información', why: 'Una herramienta legítima no tiene por qué esconder lo que hace. Pedir secreto es una señal fuerte de que algo dañino ocurre a tus espaldas.', fix: 'Quítalo. Una herramienta legítima nunca le pide al agente ocultar acciones al usuario.' },
+      'NINCA-MCP-003': { title: 'Intenta redirigir o anular al agente', why: 'La descripción intenta cambiar lo que hace el agente, antes o en lugar de lo que tú realmente pediste.', fix: 'Las descripciones no deben redirigir ni anular el comportamiento del agente.' },
+      'NINCA-MCP-004': { title: 'Menciona archivos secretos o credenciales', why: 'Las llaves privadas, contraseñas y archivos .env son lo que los atacantes quieren robar. Una herramienta rara vez necesita mencionarlos, menos si no tienen que ver con su función.', fix: 'Revisa por qué esta herramienta menciona secretos. Si no es esencial para su función, trátalo como un intento de robo de datos.' },
+      'NINCA-MCP-005': { title: 'Caracteres invisibles', why: 'Los caracteres de ancho cero son invisibles para las personas, pero la IA sí los lee. Pueden esconder instrucciones o disfrazar palabras ante los revisores.', fix: 'Elimina los caracteres invisibles de ancho cero.' },
+      'NINCA-MCP-006': { title: 'Intenta engañar a un revisor de seguridad', why: 'El texto apunta a revisores automáticos (como la propia IA de Ninca) e intenta convencerlos de que la herramienta es segura. Las herramientas honestas nunca hacen esto.', fix: 'Trata la herramienta como hostil.' },
+    },
+  },
+};
+
 const RANK = { critical: 2, high: 1, ok: 0 };
 const SCORE = { critical: 40, high: 20 };
+const VCLASS = { critical: 'blocked', high: 'warn', ok: 'ok' };
 const $ = (id) => document.getElementById(id);
+
+let lang = 'en';
+let lastRaw = null;
+let lastResults = [];
+const d = () => I18N[lang];
 
 function esc(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -283,16 +364,13 @@ function showInvisible(s) {
     (c) => `<span class="invisible">U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}</span>`);
 }
 
-// Turn the raw box into a list of tools to scan.
-// Accepts: plain text, a JSON array, a JSON object, or {tools:[...]}.
 function parseInput(raw) {
   const text = raw.trim();
   if (!text) return { mode: 'empty', tools: [] };
-  const looksJson = text[0] === '[' || text[0] === '{';
-  if (looksJson) {
+  if (text[0] === '[' || text[0] === '{') {
     let data;
     try { data = JSON.parse(text); }
-    catch (e) { return { mode: 'error', tools: [], error: 'That looks like JSON but it is not valid: ' + e.message }; }
+    catch (e) { return { mode: 'error', tools: [], error: `${d().err_json} ${e.message}` }; }
     const list = Array.isArray(data) ? data : Array.isArray(data.tools) ? data.tools : [data];
     const tools = [];
     for (const item of list) {
@@ -347,29 +425,27 @@ function highlight(text, ranges) {
   return out;
 }
 
-const LABEL = { critical: 'Dangerous', high: 'Suspicious', ok: 'Looks clean' };
-const ICON = { critical: '&#9888;', high: '&#9888;', ok: '&#10003;' };
-
 function findingsHtml(res) {
+  const t = d();
   let html = '';
   if (res.ranges.length) {
-    html += '<div class="section-label">Where</div>';
-    html += `<div class="card preview">${highlight(res.tool.text, res.ranges)}</div>`;
+    html += `<div class="label">${t.read_label}</div>`;
+    html += `<div class="panel read">${highlight(res.tool.text, res.ranges)}</div>`;
   }
   if (res.findings.length) {
-    html += '<div class="card findings">';
+    html += `<div class="label">${t.findings_label}</div><div class="panel findings">`;
     for (const f of res.findings) {
-      const r = f.rule;
+      const r = t.rules[f.rule.id];
       html +=
-        `<details id="${r.id}"><summary>` +
-        `<span class="sev ${r.sev}">${r.sev.toUpperCase()}</span>` +
+        `<details id="${f.rule.id}"><summary>` +
+        `<span class="sev ${f.rule.sev}">${t.sev[f.rule.sev]}</span>` +
         `<span class="f-title">${esc(r.title)}</span>` +
         '<span class="chev">&#8250;</span></summary>' +
-        '<dl class="body">' +
-        `<dt>Found</dt><dd>${f.matches.map((m) => `<code>${showInvisible(m)}</code>`).join(' ')}</dd>` +
-        `<dt>Why it matters</dt><dd>${esc(r.why)}</dd>` +
-        `<dt>How to fix</dt><dd>${esc(r.fix)}</dd>` +
-        `<dt>Rule</dt><dd class="rule-id">${r.id}</dd>` +
+        '<dl class="fbody">' +
+        `<dt>${t.found}</dt><dd>${f.matches.map((m) => `<code>${showInvisible(m)}</code>`).join(' ')}</dd>` +
+        `<dt>${t.why}</dt><dd>${esc(r.why)}</dd>` +
+        `<dt>${t.fix}</dt><dd>${esc(r.fix)}</dd>` +
+        `<dt>${t.rule}</dt><dd class="ruleid">${f.rule.id}</dd>` +
         '</dl></details>';
     }
     html += '</div>';
@@ -378,24 +454,25 @@ function findingsHtml(res) {
 }
 
 function report(results) {
-  const lines = ['Ninca scan report', ''];
+  const t = d();
+  const lines = [t.report_title, ''];
   results.forEach((res, i) => {
-    const head = res.tool.name || `Input ${i + 1}`;
+    const head = res.tool.name || t.input_name(i + 1);
     lines.push(res.findings.length
-      ? `${head}: ${LABEL[res.level].toUpperCase()} - ${res.findings.length} issue(s), risk ${res.score}/100`
-      : `${head}: no issues found`);
-    res.findings.forEach((f) => lines.push(`  - [${f.rule.sev.toUpperCase()}] ${f.rule.id} ${f.rule.title}`));
+      ? `${head}: ${t.verdict[res.level]} — ${res.findings.length} ${t.report_issues}, ${t.risk.toLowerCase()} ${res.score}/100`
+      : `${head}: ${t.report_no_issues}`);
+    res.findings.forEach((f) => lines.push(`  - [${t.sev[f.rule.sev]}] ${f.rule.id} ${t.rules[f.rule.id].title}`));
   });
   return lines.join('\n');
 }
 
-let lastResults = [];
-
 function render(raw) {
+  lastRaw = raw;
   const out = $('result');
+  const t = d();
   const { mode, tools, error } = parseInput(raw);
   if (mode === 'empty') { out.innerHTML = ''; lastResults = []; return; }
-  if (mode === 'error') { out.innerHTML = `<div class="card error">&#9888; ${esc(error)}</div>`; lastResults = []; return; }
+  if (mode === 'error') { out.innerHTML = `<div class="panel error">${esc(error)}</div>`; lastResults = []; return; }
 
   const results = tools.map(scanTool);
   lastResults = results;
@@ -405,72 +482,89 @@ function render(raw) {
   const many = results.length > 1;
 
   let sub;
-  if (worst === 'ok') sub = many ? `Scanned ${results.length} tools. None matched Ninca's rules.` : 'None of Ninca\'s rules matched.';
-  else sub = many
-    ? `Scanned ${results.length} tools &middot; ${flagged} flagged. Don't connect the flagged ones until they're fixed.`
-    : `Don't connect this tool to your agent until it's fixed.`;
+  if (worst === 'critical') sub = many ? t.sub_blocked_many(results.length, flagged) : t.sub_blocked_one;
+  else if (worst === 'high') sub = many ? t.sub_warn_many(results.length, flagged) : t.sub_warn_one;
+  else sub = many ? t.sub_ok_many(results.length) : t.sub_ok_one;
 
   let html =
-    `<div class="summary s-${worst}">` +
-    `<div class="summary-head"><span class="icon">${ICON[worst]}</span><h2>${LABEL[worst]}</h2></div>` +
-    `<p>${sub}</p>` +
-    '<div class="score-row" style="margin-top:14px">' +
-    `<span>Risk</span><div class="score-track"><div class="score-fill ${worst}" style="width:${maxScore}%"></div></div>` +
-    `<span><b>${maxScore}</b>/100</span></div>` +
+    `<div class="verdict v-${VCLASS[worst]}">` +
+    `<div class="v-head"><span class="dot"></span><span class="v-title">${t.verdict[worst]}</span></div>` +
+    `<p class="v-sub">${sub}</p>` +
+    '<div class="meter">' +
+    `<span>${t.risk}</span><div class="track"><div class="fill" data-w="${maxScore}"></div></div>` +
+    `<span class="num">${maxScore}/100</span></div>` +
     '</div>';
 
-  if (worst !== 'ok') {
-    html += '<div class="actions"><button class="ghost" id="copy">&#128203; Copy report</button></div>';
-  }
+  if (worst !== 'ok') html += `<div class="actions"><button class="ghost" id="copy">${t.copy}</button></div>`;
 
   results.forEach((res, i) => {
     if (many) {
-      html += '<div class="tool-block"><div class="tool-head">' +
-        `<span class="tool-name">${esc(res.tool.name || ('Input ' + (i + 1)))}</span>` +
-        `<span class="pill ${res.level}">${res.level === 'ok' ? 'CLEAN' : LABEL[res.level].toUpperCase()}</span>` +
-        '</div>';
-      html += res.findings.length ? findingsHtml(res) : '';
-      html += '</div>';
+      const plabel = res.level === 'ok' ? t.pill_clean : t.verdict[res.level];
+      html += '<div class="tool"><div class="tool-head">' +
+        `<span class="tool-name">${esc(res.tool.name || t.input_name(i + 1))}</span>` +
+        `<span class="pill ${res.level}">${plabel}</span></div>` +
+        (res.findings.length ? findingsHtml(res) : '') + '</div>';
     } else {
       html += findingsHtml(res);
     }
   });
 
-  if (worst === 'ok' && !many) {
-    html += '<p class="hint" style="text-align:left">Disguised attacks can still slip past rules; the full scanner adds an AI check for those.</p>';
-  }
+  if (worst === 'ok' && !many) html += `<p class="tail">${t.tail}</p>`;
 
   out.innerHTML = html;
+
+  // Animate the risk meter after layout (answers the scan action).
+  requestAnimationFrame(() => { const f = out.querySelector('.fill'); if (f) f.style.width = f.dataset.w + '%'; });
 
   const copy = $('copy');
   if (copy) copy.addEventListener('click', () => {
     navigator.clipboard.writeText(report(lastResults)).then(() => {
-      copy.innerHTML = '&#10003; Copied';
-      setTimeout(() => { copy.innerHTML = '&#128203; Copy report'; }, 1500);
+      copy.textContent = d().copied;
+      setTimeout(() => { copy.textContent = d().copy; }, 1500);
     });
   });
 }
 
-// Clicking a highlighted fragment opens its finding.
-$('result').addEventListener('click', (e) => {
-  const mark = e.target.closest('mark');
-  if (!mark) return;
-  const d = document.getElementById(mark.dataset.rule);
-  if (!d) return;
-  d.open = true;
-  d.classList.add('flash');
-  d.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(() => d.classList.remove('flash'), 900);
-});
+function applyLang() {
+  const t = d();
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const k = el.dataset.i18n;
+    if (t[k] != null && typeof t[k] === 'string') el.textContent = t[k];
+  });
+  $('lead').innerHTML = t.lead;
+  $('input').placeholder = `${EXAMPLES.clean}\n\n${lang === 'es' ? 'O pega un JSON de herramientas' : 'Or paste a tools JSON'}: [{"name": "add", "description": "..."}]`;
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  try { localStorage.setItem('ninca-lang', lang); } catch (e) { /* ignore */ }
+  if (lastRaw != null) render(lastRaw);
+}
 
-$('scan').addEventListener('click', () => render($('input').value));
-$('input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) render($('input').value);
-});
-document.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => {
-  $('input').value = EXAMPLES[b.dataset.ex];
+function setLang(next) { if (I18N[next]) { lang = next; applyLang(); } }
+
+// ---- Wire up ----
+(function init() {
+  try { const saved = localStorage.getItem('ninca-lang'); if (saved && I18N[saved]) lang = saved; else if (navigator.language && navigator.language.toLowerCase().startsWith('es')) lang = 'es'; }
+  catch (e) { /* ignore */ }
+
+  document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.lang)));
+  $('scan').addEventListener('click', () => render($('input').value));
+  $('input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) render($('input').value); });
+  document.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => { $('input').value = EXAMPLES[b.dataset.ex]; render($('input').value); }));
+  $('result').addEventListener('click', (e) => {
+    const mark = e.target.closest('mark');
+    if (!mark) return;
+    const el = document.getElementById(mark.dataset.rule);
+    if (!el) return;
+    el.open = true; el.classList.add('flash');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => el.classList.remove('flash'), 900);
+  });
+
+  // Open on a live catch so the value is obvious at a glance.
+  $('input').value = EXAMPLES.poisoned;
+  applyLang();
   render($('input').value);
-}));
+})();
 </script>
 </body>
 </html>
