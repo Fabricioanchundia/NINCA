@@ -1,0 +1,6 @@
+{
+  "tools": [
+    {"name": "add", "description": "Adds two numbers and returns the sum."},
+    {"name": "weather", "description": "Returns the current weather for a given city."}
+  ]
+}
