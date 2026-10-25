@@ -195,7 +195,18 @@
     .scan { width: 100%; }
     .bar { flex-wrap: wrap; }
   }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .how { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .how-title { font-size: 12.5px; font-weight: 600; color: var(--faint); margin-bottom: 12px; }
+  .how-steps { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
+  .how-steps li { margin: 6px 0; }
+  .how-steps li::marker { color: var(--accent); }
+  .how-note { margin: 14px 0 0; font-size: 13px; color: var(--faint); max-width: 64ch; line-height: 1.6; }
+  .analyzing { padding: 22px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .scanbar { position: relative; height: 4px; background: rgba(127,127,127,.15); border-radius: 999px; overflow: hidden; }
+  .scanbar span { position: absolute; top: 0; left: -40%; width: 40%; height: 100%; border-radius: 999px; background: var(--accent); animation: ninca-sweep .9s ease-in-out infinite; }
+  .analyzing-text { margin-top: 12px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  @keyframes ninca-sweep { 0% { left: -40%; } 100% { left: 100%; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } .scanbar span { animation: none; left: 0; width: 100%; } }
 </style>
 </head>
 <body>
@@ -234,12 +245,24 @@
         <button class="chip" data-ex="server" data-i18n="ex_server"></button>
         <button class="chip" data-ex="clean" data-i18n="ex_clean"></button>
       </div>
+      <label class="chip upload" for="file" data-i18n="upload"></label>
+      <input id="file" type="file" accept=".json,application/json,.txt" hidden>
       <button class="scan" id="scan" data-i18n="scan"></button>
     </div>
   </div>
   <p class="hint" data-i18n="hint"></p>
 
   <div id="result" aria-live="polite"></div>
+
+  <section class="how">
+    <div class="how-title" data-i18n="how_title"></div>
+    <ol class="how-steps">
+      <li data-i18n="how_1"></li>
+      <li data-i18n="how_2"></li>
+      <li data-i18n="how_3"></li>
+    </ol>
+    <p class="how-note" data-i18n="how_note"></p>
+  </section>
 
   <footer>
     <div class="ft" data-i18n="footer_title"></div>
@@ -279,7 +302,13 @@ const I18N = {
     privacy: 'Runs entirely in your browser. Nothing is uploaded, no code is executed.',
     ex_label: 'Examples',
     ex_poisoned: 'Poisoned tool', ex_sneaky: 'Disguised tool', ex_server: 'MCP server (JSON)', ex_clean: 'Clean tool',
-    scan: 'Scan', hint: 'Press Ctrl + Enter to scan',
+    scan: 'Scan', hint: 'Press Ctrl + Enter to scan', analyzing: 'Analyzing…',
+    upload: 'Upload JSON',
+    how_title: 'How it works',
+    how_1: 'Paste a tool’s description, or upload a server’s tools JSON.',
+    how_2: 'Ninca checks it against its rules — no code runs, nothing is uploaded.',
+    how_3: 'You get a connect / don’t-connect verdict, with the evidence.',
+    how_note: 'Where do the tools come from? A server’s tool definitions live in its docs or code on GitHub — copy them here, or save them as a JSON file and upload it.',
     verdict: { critical: 'Do not connect', high: 'Review before connecting', ok: 'Safe to connect' },
     sub_blocked_one: 'This tool carries hidden instructions. Do not connect it to your agent.',
     sub_blocked_many: (n, f) => `Scanned ${n} tools · ${f} should not be connected to your agent.`,
@@ -315,7 +344,13 @@ const I18N = {
     privacy: 'Se ejecuta por completo en tu navegador. No se sube nada ni se ejecuta código.',
     ex_label: 'Ejemplos',
     ex_poisoned: 'Envenenada', ex_sneaky: 'Disfrazada', ex_server: 'Servidor MCP (JSON)', ex_clean: 'Limpia',
-    scan: 'Analizar', hint: 'Pulsa Ctrl + Enter para analizar',
+    scan: 'Analizar', hint: 'Pulsa Ctrl + Enter para analizar', analyzing: 'Analizando…',
+    upload: 'Subir JSON',
+    how_title: 'Cómo funciona',
+    how_1: 'Pega la descripción de una herramienta, o sube el JSON de herramientas de un servidor.',
+    how_2: 'Ninca la revisa con sus reglas — no ejecuta código ni sube nada.',
+    how_3: 'Obtienes un veredicto conectar / no conectar, con la evidencia.',
+    how_note: '¿De dónde salen las herramientas? Las definiciones están en la documentación o el código del servidor en GitHub — cópialas aquí, o guárdalas en un archivo JSON y súbelo.',
     verdict: { critical: 'No conectar', high: 'Revisar antes de conectar', ok: 'Seguro para conectar' },
     sub_blocked_one: 'Esta herramienta lleva instrucciones ocultas. No la conectes a tu agente.',
     sub_blocked_many: (n, f) => `${n} herramientas analizadas · ${f} no deberían conectarse a tu agente.`,
@@ -466,6 +501,20 @@ function report(results) {
   return lines.join('\n');
 }
 
+let scanTimer = null;
+
+function scanning(raw) {
+  const out = $('result');
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !raw.trim()) {
+    render(raw);
+    return;
+  }
+  out.innerHTML = `<div class="analyzing"><div class="scanbar"><span></span></div><div class="analyzing-text">${d().analyzing}</div></div>`;
+  clearTimeout(scanTimer);
+  scanTimer = setTimeout(() => render(raw), 720);
+}
+
 function render(raw) {
   lastRaw = raw;
   const out = $('result');
@@ -547,9 +596,22 @@ function setLang(next) { if (I18N[next]) { lang = next; applyLang(); } }
   catch (e) { /* ignore */ }
 
   document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.lang)));
-  $('scan').addEventListener('click', () => render($('input').value));
-  $('input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) render($('input').value); });
-  document.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => { $('input').value = EXAMPLES[b.dataset.ex]; render($('input').value); }));
+  $('scan').addEventListener('click', () => scanning($('input').value));
+  $('input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) scanning($('input').value); });
+  document.querySelectorAll('[data-ex]').forEach((b) => b.addEventListener('click', () => { $('input').value = EXAMPLES[b.dataset.ex]; scanning($('input').value); }));
+
+  function loadFile(f) {
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { $('input').value = String(reader.result || ''); scanning($('input').value); };
+    reader.readAsText(f);
+  }
+  $('file').addEventListener('change', (e) => { loadFile(e.target.files && e.target.files[0]); e.target.value = ''; });
+  ['dragover', 'dragenter'].forEach((ev) => $('input').addEventListener(ev, (e) => e.preventDefault()));
+  $('input').addEventListener('drop', (e) => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) { e.preventDefault(); loadFile(f); }
+  });
   $('result').addEventListener('click', (e) => {
     const mark = e.target.closest('mark');
     if (!mark) return;
